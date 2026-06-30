@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISRO Urban Heat Mitigation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #18181b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #10b981; }
+    </style>
+</head>
+<body class="bg-black text-white h-screen flex font-mono overflow-hidden">
+
+    <div class="w-1/4 bg-zinc-950 p-6 flex flex-col border-r border-zinc-800 shadow-xl z-10 overflow-y-auto custom-scrollbar">
+        <h1 class="text-2xl font-bold text-emerald-400 mb-2 tracking-wide">HeatIntervention AI</h1>
+        <div class="h-0.5 w-16 bg-emerald-500 mb-6"></div>
+        
+        <p class="text-xs text-zinc-400 uppercase tracking-wider font-semibold border-b border-zinc-800 pb-2 mb-4">Thermodynamic Interventions</p>
+        
+        <div class="mb-4">
+            <label class="flex justify-between text-xs uppercase tracking-wider text-zinc-400 mb-1">
+                <span>Urban Greening</span> <span id="valGreen" class="text-emerald-500 font-bold">0%</span>
+            </label>
+            <input type="range" id="slideGreen" min="0" max="100" value="0" class="w-full accent-emerald-500 cursor-pointer bg-zinc-800 appearance-none h-1.5 rounded">
+        </div>
+
+        <div class="mb-4">
+            <label class="flex justify-between text-xs uppercase tracking-wider text-zinc-400 mb-1">
+                <span>Cool Roofs & Surfaces</span> <span id="valRoof" class="text-emerald-500 font-bold">0%</span>
+            </label>
+            <input type="range" id="slideRoof" min="0" max="100" value="0" class="w-full accent-emerald-500 cursor-pointer bg-zinc-800 appearance-none h-1.5 rounded">
+        </div>
+
+        <div class="mb-4">
+            <label class="flex justify-between text-xs uppercase tracking-wider text-zinc-400 mb-1">
+                <span>Ventilation Corridors</span> <span id="valVent" class="text-emerald-500 font-bold">0%</span>
+            </label>
+            <input type="range" id="slideVent" min="0" max="100" value="0" class="w-full accent-emerald-500 cursor-pointer bg-zinc-800 appearance-none h-1.5 rounded">
+        </div>
+
+        <div class="mb-4">
+            <label class="flex justify-between text-xs uppercase tracking-wider text-zinc-400 mb-1">
+                <span>Blue-Green Infra</span> <span id="valBlue" class="text-emerald-500 font-bold">0%</span>
+            </label>
+            <input type="range" id="slideBlue" min="0" max="100" value="0" class="w-full accent-emerald-500 cursor-pointer bg-zinc-800 appearance-none h-1.5 rounded">
+        </div>
+
+        <div class="mb-6">
+            <label class="flex justify-between text-xs uppercase tracking-wider text-zinc-400 mb-1">
+                <span>Smart Urban Design</span> <span id="valSmart" class="text-emerald-500 font-bold">0%</span>
+            </label>
+            <input type="range" id="slideSmart" min="0" max="100" value="0" class="w-full accent-emerald-500 cursor-pointer bg-zinc-800 appearance-none h-1.5 rounded">
+        </div>
+
+        <p class="text-xs text-zinc-400 uppercase tracking-wider font-semibold border-b border-zinc-800 pb-2 mb-4 mt-auto">ISRO Multi-Mission Telemetry</p>
+        <div id="isroPanel" class="bg-zinc-900 border border-zinc-700 rounded p-3 min-h-[140px]">
+            <p class="text-[10px] text-zinc-500 mb-2 leading-relaxed">Draw a polygon to extract live telemetry from <a href="https://bhuvan.nrsc.gov.in" target="_blank" class="text-emerald-500 hover:underline">Bhuvan</a> (LULC), <a href="https://vedas.sac.gov.in" target="_blank" class="text-emerald-500 hover:underline">VEDAS</a>, and <a href="https://mosdac.gov.in" target="_blank" class="text-emerald-500 hover:underline">MOSDAC</a>.</p>
+            <div id="isroResults" class="text-sm text-zinc-300"></div>
+        </div>
+    </div>
+
+    <div class="w-2/4 bg-zinc-900 relative overflow-hidden shadow-2xl z-0">
+        <div id="map" class="absolute inset-0"></div>
+    </div>
+
+    <div class="w-1/4 bg-zinc-950 p-6 flex flex-col border-l border-zinc-800 shadow-xl z-10 overflow-y-auto custom-scrollbar">
+        
+        <div class="mb-6 bg-zinc-900 border border-zinc-800 rounded-lg p-4 text-center">
+            <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Estimated City-Wide Cooling</p>
+            <p class="text-4xl text-emerald-400 font-bold">-<span id="coolingDisplay">0.0</span>°C</p>
+        </div>
+
+        <p class="text-xs text-zinc-400 uppercase tracking-wider font-semibold border-b border-zinc-800 pb-2 mb-4">Resource Requirements</p>
+        
+        <div class="space-y-4 mb-6">
+            <div class="bg-zinc-900 border border-zinc-700 rounded p-3">
+                <p class="text-[10px] text-emerald-500 font-bold tracking-widest uppercase mb-1">Urban Greening Target</p>
+                <p class="text-sm text-zinc-300">Action: Plant <span id="reqTrees" class="font-bold text-white">0</span> mature canopy trees (est. 30m² ea).</p>
+            </div>
+            
+            <div class="bg-zinc-900 border border-zinc-700 rounded p-3">
+                <p class="text-[10px] text-emerald-500 font-bold tracking-widest uppercase mb-1">Albedo Material Swap</p>
+                <p class="text-sm text-zinc-300">Action: Apply high-reflectance coating to <span id="reqRoofs" class="font-bold text-white">0</span> m² of dark surfaces.</p>
+            </div>
+            
+            <div class="bg-zinc-900 border border-zinc-700 rounded p-3">
+                <p class="text-[10px] text-emerald-500 font-bold tracking-widest uppercase mb-1">Blue Infra Volume</p>
+                <p class="text-sm text-zinc-300">Action: Establish <span id="reqPools" class="font-bold text-white">0</span> Olympic pool equivalents of surface water.</p>
+            </div>
+        </div>
+
+        <div class="mt-auto bg-zinc-900 border border-zinc-700 rounded p-3">
+            <div class="flex items-center gap-2 mb-2 border-b border-zinc-800 pb-2">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono">AI Policy Strategist</span>
+                <button id="runAiBtn" class="ml-auto text-[9px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded transition-colors">Generate Brief</button>
+            </div>
+            <div id="aiOutput" class="text-[11px] text-zinc-400 leading-relaxed min-h-[120px]">
+                Adjust the thermodynamic parameters to meet resource constraints, then run the AI synthesis to generate an executive brief for city planners.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const map = L.map('map').setView([20.2961, 85.8245], 12);
+
+        const baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; CARTO', maxZoom: 19
+        });
+        baseLayer.addTo(map);
+
+        const isroLulcLayer = L.tileLayer.wms('https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms', {
+            layers: 'lulc:OR_LULC50K_1516',
+            format: 'image/png',
+            transparent: true,
+            version: '1.1.1',
+            opacity: 0.6,
+            attribution: 'ISRO Bhuvan LULC'
+        });
+
+        const overlayMaps = {
+            'Live ISRO LULC (Odisha)': isroLulcLayer
+        };
+        L.control.layers(null, overlayMaps).addTo(map);
+
+        const heatLayer = L.layerGroup().addTo(map);
+
+        const sliders = {
+            green: document.getElementById('slideGreen'),
+            roof: document.getElementById('slideRoof'),
+            vent: document.getElementById('slideVent'),
+            blue: document.getElementById('slideBlue'),
+            smart: document.getElementById('slideSmart')
+        };
+        const coolingDisplay = document.getElementById('coolingDisplay');
+        const resultsDiv = document.getElementById('isroResults');
+        const aiOutput = document.getElementById('aiOutput');
+
+
+        const drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        const drawControl = new L.Control.Draw({
+            draw: {
+                polyline: false,
+                marker: false,
+                circlemarker: false,
+                circle: false,
+                polygon: true,
+                rectangle: true
+            },
+            edit: { featureGroup: drawnItems }
+        });
+        map.addControl(drawControl);
+
+        function calculateAreaInSquareMeters(bounds) {
+            // Earth radius in meters
+            const R = 6378137; 
+            const dLat = (bounds.getNorthEast().lat - bounds.getSouthWest().lat) * Math.PI / 180;
+            const dLon = (bounds.getNorthEast().lng - bounds.getSouthWest().lng) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(bounds.getSouthWest().lat * Math.PI / 180) * Math.cos(bounds.getNorthEast().lat * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c; 
+           
+            return Math.round(distance * distance); 
+        }
+
+        function updateSummary() {
+            document.getElementById('valGreen').innerText = sliders.green.value + '%';
+            document.getElementById('valRoof').innerText = sliders.roof.value + '%';
+            document.getElementById('valVent').innerText = sliders.vent.value + '%';
+            document.getElementById('valBlue').innerText = sliders.blue.value + '%';
+            document.getElementById('valSmart').innerText = sliders.smart.value + '%';
+
+            const treesNeeded = Math.round((interventionAreaM2 * (sliders.green.value / 100)) / 30);
+            document.getElementById('reqTrees').innerText = treesNeeded.toLocaleString();
+            const roofArea = Math.round(interventionAreaM2 * (sliders.roof.value / 100));
+            document.getElementById('reqRoofs').innerText = roofArea.toLocaleString();
+            const poolsNeeded = ((interventionAreaM2 * (sliders.blue.value / 100)) / 1250).toFixed(1);
+            document.getElementById('reqPools').innerText = poolsNeeded;
+        }
+        let interventionAreaM2 = 50000;
+        let currentBoundingBox = null;
+        let isFirstLoad = false;
+
+        function calculateAreaInSquareMeters(bounds) {
+            const sw = bounds.getSouthWest();
+            const ne = bounds.getNorthEast();
+            const earthRadius = 6371000;
+            const latRadians = ((sw.lat + ne.lat) / 2) * (Math.PI / 180);
+            const xMeters = earthRadius * Math.cos(latRadians) * ((ne.lng - sw.lng) * (Math.PI / 180));
+            const yMeters = earthRadius * ((ne.lat - sw.lat) * (Math.PI / 180));
+            return Math.abs(xMeters * yMeters);
+        }
+        
+        function handleDrawnLayer(layer) {
+            drawnItems.clearLayers();
+            drawnItems.addLayer(layer);
+
+            const bounds = layer.getBounds();
+            currentBoundingBox = {
+                min_lat: bounds.getSouthWest().lat,
+                min_lon: bounds.getSouthWest().lng,
+                max_lat: bounds.getNorthEast().lat,
+                max_lon: bounds.getNorthEast().lng
+            };
+
+            interventionAreaM2 = calculateAreaInSquareMeters(bounds);
+
+            resultsDiv.innerHTML = '<span class="text-emerald-500 font-mono text-[10px] uppercase tracking-widest animate-pulse">Establishing Live Downlink to Earth Engine...</span>';
+
+            isFirstLoad = true;
+            sliders.green.value = 0;
+            sliders.roof.value = 0;
+            sliders.blue.value = 0;
+            sliders.vent.value = 0;
+            sliders.smart.value = 0;
+
+            updateSummary();
+            fetchAndDrawHeat();
+        }
+
+        map.on(L.Draw.Event.CREATED, function (e) {
+            handleDrawnLayer(e.layer);
+        });
+
+        Object.values(sliders).forEach((slider) => {
+            slider.addEventListener('input', () => {
+                updateSummary();
+                if (currentBoundingBox) {
+                    fetchAndDrawHeat();
+                }
+            });
+        });
+
+        const runAiBtn = document.getElementById('runAiBtn');
+        runAiBtn.addEventListener('click', async () => {
+            runAiBtn.innerText = "Analyzing...";
+            runAiBtn.classList.add("opacity-50", "cursor-not-allowed");
+            aiOutput.innerHTML = `<span class="text-emerald-500 animate-pulse">Routing telemetry to AI engine...</span>`;
+
+            try {
+                const currentCooling = coolingDisplay.innerText;
+                const g = sliders.green.value;
+                const r = sliders.roof.value;
+                const v = sliders.vent.value;
+                const b = sliders.blue.value;
+                const s = sliders.smart.value;
+
+                const url = `http://localhost:8000/api/ai-synthesis?cooling=${currentCooling}&green=${g}&roof=${r}&vent=${v}&blue=${b}&smart=${s}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.status === "success") {
+                    let formattedText = data.analysis
+                        .replace('HEAT STRESS IMPACT:', '<strong class="text-white block mt-1">HEAT STRESS IMPACT:</strong>')
+                        .replace('KEY DRIVERS:', '<strong class="text-white block mt-2">KEY DRIVERS:</strong>')
+                        .replace('RECOMMENDATION:', '<strong class="text-white block mt-2">RECOMMENDATION:</strong>');
+                    
+                    aiOutput.innerHTML = formattedText;
+                } else {
+                    aiOutput.innerHTML = `<span class="text-red-400">AI generation failed. Check API key.</span>`;
+                }
+            } catch (error) {
+                console.error(error);
+                aiOutput.innerHTML = `<span class="text-red-400">Backend offline.</span>`;
+            }
+
+            runAiBtn.innerText = "Generate Brief";
+            runAiBtn.classList.remove("opacity-50", "cursor-not-allowed");
+        });
+
+        async function fetchAndDrawHeat() {
+            if (!currentBoundingBox) return;
+
+            updateSummary();
+
+            try {
+                const payload = {
+                    min_lat: currentBoundingBox.min_lat,
+                    min_lon: currentBoundingBox.min_lon,
+                    max_lat: currentBoundingBox.max_lat,
+                    max_lon: currentBoundingBox.max_lon,
+                    greenery_pct: parseFloat(sliders.green.value),
+                    albedo_pct: parseFloat(sliders.roof.value),
+                    ventilation_pct: parseFloat(sliders.vent.value),
+                    water_pct: parseFloat(sliders.blue.value),
+                    smart_design_pct: parseFloat(sliders.smart.value)
+                };
+
+                const response = await fetch('http://localhost:8000/api/heat-data-live', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Backend request failed');
+                }
+
+                const data = await response.json();
+
+                if (isFirstLoad) {
+                    sliders.green.value = data.metadata.existing_conditions.green_pct;
+                    sliders.blue.value = data.metadata.existing_conditions.blue_pct;
+                    sliders.roof.value = Math.round(data.metadata.existing_conditions.built_pct * 0.2);
+
+                    isFirstLoad = false;
+                    updateSummary();
+                    fetchAndDrawHeat();
+                    return;
+                }
+
+                const areaHectares = (interventionAreaM2 / 10000).toFixed(1);
+
+                resultsDiv.innerHTML = `
+                    <div class="border-b border-zinc-700 pb-2 mb-2 mt-2">
+                        <p class="text-emerald-400 text-[10px] font-bold tracking-wider mb-1">BHUVAN (LULC 250k)</p>
+                        <div class="flex justify-between text-[11px]"><span class="text-zinc-400">Target Area</span><span class="text-white font-mono">${areaHectares} Hectares</span></div>
+                    </div>
+                    <div class="border-b border-zinc-700 pb-2 mb-2">
+                        <p class="text-emerald-400 text-[10px] font-bold tracking-wider mb-1">DATA SOURCE</p>
+                        <div class="flex justify-between text-[11px]"><span class="text-zinc-400">Satellite</span><span class="text-white font-mono">${data.metadata.source}</span></div>
+                    </div>
+                    <div>
+                        <p class="text-emerald-400 text-[10px] font-bold tracking-wider mb-1">MOSDAC (INSAT-3D/Landsat)</p>
+                        <div class="flex justify-between text-[11px]"><span class="text-zinc-400">Live Baseline Temp</span><span class="text-orange-500 font-mono font-bold">${data.metadata.baseline_lst}°C</span></div>
+                    </div>
+                `;
+
+                coolingDisplay.innerText = data.metadata.net_cooling_achieved;
+                heatLayer.clearLayers();
+
+                data.spatial_data.forEach((zone) => {
+                    let circleColor = '#eab308';
+                    if (zone.simulated_lst > 40.0) circleColor = '#ef4444';
+                    else if (zone.simulated_lst > 36.0) circleColor = '#f97316';
+
+                    L.circle([zone.lat, zone.lon], {
+                        color: circleColor,
+                        fillColor: circleColor,
+                        fillOpacity: 0.5,
+                        radius: 400
+                    }).addTo(heatLayer).bindPopup(`<b>Baseline LST:</b> ${zone.baseline_lst}°C<br><b>Simulated LST:</b> ${zone.simulated_lst}°C`);
+                });
+            } catch (error) {
+                console.error('Backend offline or Earth Engine Timeout!', error);
+            }
+        }
+    </script>
+</body>
+</html>

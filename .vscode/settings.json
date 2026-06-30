@@ -1,0 +1,6 @@
+{
+  "python.terminal.useEnvFile": true,
+  "python.defaultInterpreterPath": "C:\\Users\\anish\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+  "python.pythonPath": "C:\\Users\\anish\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+  "git.path": "A:\\Git\\cmd\\git.exe"
+}

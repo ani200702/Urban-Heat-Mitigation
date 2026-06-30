@@ -1,0 +1,9 @@
+# Security
+.env
+
+# Python caching and environments
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
